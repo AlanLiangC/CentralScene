@@ -64,15 +64,17 @@ data:
       keypoint_drop_range: [ 5,20 ]
       randaug: false
     train:
-      target: lidm.data.nusc.nuScenesImageTrain
+      target: lidm.dataset.nusc.nuScenesImageTrain
       params:
         condition_key: image
-        data_root: /home/alan/AlanLiang/Dataset/Nuscenes
+        # data_root: /home/alan/AlanLiang/Dataset/Nuscenes
+        data_root: /data1/liangao/Dataset/openpcd_nuscenes
     validation:
-      target: lidm.data.nusc.nuScenesImageValidation
+      target: lidm.dataset.nusc.nuScenesImageValidation
       params:
         condition_key: image
-        data_root: /home/alan/AlanLiang/Dataset/Nuscenes
+        # data_root: /home/alan/AlanLiang/Dataset/Nuscenes
+        data_root: /data1/liangao/Dataset/openpcd_nuscenes
 
 
 lightning:

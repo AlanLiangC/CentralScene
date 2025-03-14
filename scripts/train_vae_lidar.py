@@ -22,7 +22,7 @@ from pytorch_lightning.utilities import rank_zero_info
 import sys
 sys.path.append("../")
 
-from lidm.data.base import Txt2ImgIterableBaseDataset
+from lidm.dataset.base import Txt2ImgIterableBaseDataset
 from lidm.utils.lidar_utils import range2pcd
 from lidm.utils.misc_utils import instantiate_from_config, isdepth
 
