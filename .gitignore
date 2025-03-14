@@ -134,3 +134,10 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+dataset
+data
+logs/
+wandb/
+*.png
+*.ckpt
