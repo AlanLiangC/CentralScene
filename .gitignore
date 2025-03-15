@@ -140,3 +140,5 @@ logs/
 wandb/
 *.png
 *.ckpt
+.gradio
+flagged
