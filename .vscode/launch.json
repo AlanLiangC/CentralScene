@@ -14,12 +14,25 @@
             "cwd": "${workspaceFolder}/scripts",
             "args": [
                 // train vae
-                "-b", "../config/vae/nuscenes/autoencoder_c2_p4.yaml",
+                // "-b", "../config/vae/nuscenes/autoencoder_c2_p4.yaml",
+                // "-t",
+                // "--gpus", "1",
+                // "--batch_size", "2",
+                // "--num_workers", "1"
+
+                // eval vae
+                // "-d", "nuscenes",
+                // "-r", "../model/first_stage_models/nusc/f_c2_p4/model.ckpt",
+                // "--batch_size", "2",
+                // "--num_workers", "1"
+
+                // train lidar diffusion
+                "-b", "../config/lidar_diffusion/nuscenes/uncond_c2_p4.yaml",
                 "-t",
                 "--gpus", "1",
                 "--batch_size", "2",
                 "--num_workers", "1"
-                
+
                 // sample
                 // "-d", "kitti",
                 // "-r", "../model/lidm/kitti/uncond/model.ckpt",

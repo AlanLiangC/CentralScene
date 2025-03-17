@@ -48,10 +48,10 @@ data:
       keypoint_drop_range: [ 5,20 ]
       randaug: false
     train:
-      target: lidm.data.kitti.KITTIImageTrain
+      target: lidm.dataset.kitti.KITTIImageTrain
       params:
         condition_key: image
     validation:
-      target: lidm.data.kitti.KITTIImageValidation
+      target: lidm.dataset.kitti.KITTIImageValidation
       params:
         condition_key: image
