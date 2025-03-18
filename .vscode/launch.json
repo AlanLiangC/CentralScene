@@ -14,11 +14,11 @@
             "cwd": "${workspaceFolder}/scripts",
             "args": [
                 // train vae
-                // "-b", "../config/vae/nuscenes/autoencoder_c2_p4.yaml",
-                // "-t",
-                // "--gpus", "1",
-                // "--batch_size", "2",
-                // "--num_workers", "1"
+                "-b", "../config/vae/nuscenes/autoencoder_c2_p4_gaus.yaml",
+                "-t",
+                "--gpus", "1",
+                "--batch_size", "2",
+                "--num_workers", "1"
 
                 // eval vae
                 // "-d", "nuscenes",
@@ -41,11 +41,10 @@
                 // "--eval"
 
                 // sample_cond
-                "-d", "kitti",
-                "-r", "../model/lidm/kitti/sem2lidar/model.ckpt",
-                // "-n", "10",
-                "-b", "2",
-                "--eval"
+                // "-d", "kitti",
+                // "-r", "../model/lidm/kitti/sem2lidar/model.ckpt",
+                // "-b", "2",
+                // "--eval"
             ]
         }
     ]
