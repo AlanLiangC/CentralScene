@@ -39,6 +39,8 @@ def custom_to_pil(x):
 
 
 def custom_to_np(x):
+    if x.dim() == 3:
+        x = x[0,...]
     x = x.detach().cpu().squeeze().numpy()
     x = (np.clip(x, -1., 1.) + 1.) / 2.
     x = x.astype(np.float32)  # NOTE: use predicted continuous depth instead of np.uint8 depth

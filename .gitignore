@@ -143,3 +143,4 @@ wandb/
 .gradio
 flagged
 samples
+scripts/pretrained_weights

@@ -24,7 +24,8 @@ with gr.Blocks(title='AL', theme=gr.themes.Monochrome()) as demo:
 
                 selected_model = gr.Dropdown(
                     label="Model for generate",
-                    choices=['../model/lidm/kitti/uncond/model.ckpt'],
+                    choices=['../model/lidm/kitti/uncond/model.ckpt',
+                             '../model/lidm/nuscenes/uncond/model.ckpt'],
                     interactive=True
                 )
 

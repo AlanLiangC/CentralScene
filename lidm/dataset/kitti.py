@@ -100,9 +100,9 @@ class SemanticKITTIBase(KITTIBase):
         # read data paths from KITTI
         for seq_id in eval('SEM_KITTI_%s_SET' % self.split.upper()):
             self.data.extend(glob.glob(os.path.join(
-                self.data_root, f'data/sequences/{seq_id}/velodyne/*.bin')))
+                self.data_root, f'dataset/sequences/{seq_id}/velodyne/*.bin')))
         # read label mapping
-        data_config = yaml.safe_load(open('./data/config/semantic-kitti.yaml', 'r'))
+        data_config = yaml.safe_load(open('../lidm/dataset/config/semantic-kitti.yaml', 'r'))
         remap_dict = data_config["learning_map"]
         max_key = max(remap_dict.keys())
         self.learning_map = np.zeros((max_key + 100), dtype=np.int32)
@@ -126,12 +126,12 @@ class SemanticKITTIBase(KITTIBase):
 
 class SemanticKITTITrain(SemanticKITTIBase):
     def __init__(self, **kwargs):
-        super().__init__(data_root='./data/SemanticKITTI', split='train', **kwargs)
+        super().__init__(split='train', **kwargs)
 
 
 class SemanticKITTIValidation(SemanticKITTIBase):
     def __init__(self, **kwargs):
-        super().__init__(data_root='./data/SemanticKITTI', split='val', **kwargs)
+        super().__init__(split='val', **kwargs)
 
 
 class KITTI360Base(KITTIBase):
@@ -150,7 +150,7 @@ class KITTI360Base(KITTIBase):
             seq_list = eval('KITTI360_%s_SET' % self.split.upper())
         for seq_id in seq_list:
             self.data.extend(glob.glob(os.path.join(
-                self.data_root, f'data_3d_raw/2013_05_28_drive_00{seq_id}_sync/velodyne_points/data/*.bin')))
+                self.data_root, f'KITTI-360/data_3d_raw/2013_05_28_drive_00{seq_id}_sync/velodyne_points/data/*.bin')))
 
     def random_drop_camera(self, camera_list):
         if np.random.rand() < self.aug_config['camera_drop'] and self.split == 'train':
@@ -170,12 +170,12 @@ class KITTI360Base(KITTIBase):
 
 class KITTI360Train(KITTI360Base):
     def __init__(self, **kwargs):
-        super().__init__(data_root='./data/KITTI-360', split='train', **kwargs)
+        super().__init__(data_root='../data', split='train', **kwargs)
 
 
 class KITTI360Validation(KITTI360Base):
     def __init__(self, **kwargs):
-        super().__init__(data_root='./data/KITTI-360', split='val', **kwargs)
+        super().__init__(data_root='../data', split='val', **kwargs)
 
 
 class AnnotatedKITTI360Base(Annotated3DObjectsDataset, KITTI360Base):

@@ -47,7 +47,7 @@ model:
     cond_stage_config: "__is_unconditional__"
 
 data:
-  target: main.DataModuleFromConfig
+  target: train_vae_lidar.DataModuleFromConfig
   params:
     batch_size: 4
     num_workers: 8
@@ -74,11 +74,11 @@ data:
       keypoint_drop_range: [ 5,20 ]
       randaug: false
     train:
-      target: lidm.data.kitti.KITTI360Train
+      target: lidm.dataset.kitti.KITTI360Train
       params:
         condition_key: image
     validation:
-      target: lidm.data.kitti.KITTI360Validation
+      target: lidm.dataset.kitti.KITTI360Validation
       params:
         condition_key: image
 
@@ -86,7 +86,7 @@ data:
 lightning:
   callbacks:
     image_logger:
-      target: main.ImageLogger
+      target: train_vae_lidar.ImageLogger
       params:
         batch_frequency: 5000
         max_images: 8

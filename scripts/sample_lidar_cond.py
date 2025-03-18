@@ -1,63 +1,59 @@
 import math
 import sys
 
-sys.path.append('./')
+sys.path.append('../')
 
 import os, argparse, glob, datetime, yaml
 import torch
 from torch.utils.data import DataLoader
 import time
 import numpy as np
-from tqdm import trange
+from tqdm import tqdm
 import joblib
 
 from omegaconf import OmegaConf
 from PIL import Image
 
-import sys
-sys.path.append("../")
-
-from lidm.models.diffusion.ddim import DDIMSampler
-from lidm.utils.misc_utils import instantiate_from_config, set_seed, count_params
+from lidm.utils.misc_utils import instantiate_from_config, set_seed
 from lidm.utils.lidar_utils import range2pcd
 from lidm.eval.eval_utils import evaluate
 
-DATASET2METRICS = {'kitti': ['frid', 'fsvd', 'fpvd', 'jsd', 'mmd'], 'nuscenes': ['fsvd', 'fpvd', 'jsd', 'mmd']}
-DATASET2TYPE = {'kitti': '64', 'nuscenes': '32'}
+# remove annoying user warnings
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=RuntimeWarning)
 
+DATASET2METRICS = {'kitti': ['frid', 'fsvd', 'fpvd', 'jsd', 'mmd'], 'nuscenes': ['fsvd', 'fpvd']}
+DATASET2TYPE = {'kitti': '64', 'nuscenes': '32'}
 
 custom_to_range = lambda x: (x * 255.).clamp(0, 255).floor() / 255.
 
 
-def custom_to_pcd(x, config):
-    if x.dim() == 3:
-        x = x[0,...]
+def custom_to_pcd(x, config, rgb=None):
     x = x.squeeze().detach().cpu().numpy()
     x = (np.clip(x, -1., 1.) + 1.) / 2.
-    xyz, _, _ = range2pcd(x, **config['data']['params']['dataset'])
+    if rgb is not None:
+        rgb = rgb.squeeze().detach().cpu().numpy()
+        rgb = (np.clip(rgb, -1., 1.) + 1.) / 2.
+        rgb = rgb.transpose(1, 2, 0)
+    xyz, rgb, _ = range2pcd(x, color=rgb, **config['data']['params']['dataset'])
 
-    rgb = np.zeros_like(xyz)
     return xyz, rgb
 
 
 def custom_to_pil(x):
     x = x.detach().cpu().squeeze().numpy()
-    # x = np.clip(x, 0., 1.)
     x = (np.clip(x, -1., 1.) + 1.) / 2.
     x = (255 * x).astype(np.uint8)
+
+    if x.ndim == 3:
+        x = x.transpose(1, 2, 0)
     x = Image.fromarray(x)
 
     return x
 
 
-def custom_to_np(x):
-    x = x.detach().cpu().squeeze().numpy()
-    x = (np.clip(x, -1., 1.) + 1.) / 2.
-    x = x.astype(np.float32)  # NOTE: use predicted continuous depth instead of np.uint8 depth
-    return x
-
-
-def logs2pil(logs, keys=["samples"]):
+def logs2pil(logs, keys=["sample"]):
     imgs = dict()
     for k in logs:
         try:
@@ -74,96 +70,45 @@ def logs2pil(logs, keys=["samples"]):
     return imgs
 
 
-@torch.no_grad()
-def convsample(model, shape, return_intermediates=True, verbose=True, make_prog_row=False):
-    if not make_prog_row:
-        return model.p_sample_loop(None, shape, return_intermediates=return_intermediates, verbose=verbose)
-    else:
-        return model.progressive_denoising(None, shape, verbose=verbose)
-
-
-@torch.no_grad()
-def convsample_ddim(model, steps, shape, eta=1.0, verbose=False):
-    ddim = DDIMSampler(model)
-    bs = shape[0]
-    shape = shape[1:]
-    samples, intermediates = ddim.sample(steps, batch_size=bs, shape=shape, eta=eta, verbose=verbose, disable_tqdm=True)
-    return samples, intermediates
-
-
-@torch.no_grad()
-def make_convolutional_sample(model, batch_size, image_size=None, vanilla=False, custom_steps=None, eta=1.0, verbose=False):
-    log = dict()
-    if image_size is None:
-        image_size = model.model.diffusion_model.image_size
-    shape = [batch_size, model.model.diffusion_model.in_channels, *image_size]
-
-    with model.ema_scope("Plotting"):
-        t0 = time.time()
-        if vanilla:
-            sample, progrow = convsample(model, shape, make_prog_row=True, verbose=verbose)
-        else:
-            sample, intermediates = convsample_ddim(model, custom_steps, shape, eta, verbose)
-        t1 = time.time()
-    x_sample = model.decode_first_stage(sample)
-
-    log["samples"] = x_sample
-    log["time"] = t1 - t0
-    log['throughput'] = sample.shape[0] / (t1 - t0)
-    if verbose:
-        print(f'Throughput for this batch: {log["throughput"]}')
-    return log
-
-
-def run(model, imglogdir, pcdlogdir, batch_size=50, image_size=None, vanilla=False, custom_steps=None, eta=None, n_samples=50000,
-        nplog=None, config=None, verbose=False):
-    if vanilla:
-        print(f'Using Vanilla DDPM sampling with {model.num_timesteps} sampling steps.')
-    else:
-        print(f'Using DDIM sampling with {custom_steps} sampling steps and eta={eta}')
-
+def run(model, dataloader, imglogdir, pcdlogdir, nplog=None, config=None, verbose=False, log_config={}):
     tstart = time.time()
     n_saved = len(glob.glob(os.path.join(imglogdir, '*.png')))
 
-    if model.cond_stage_model is None:
-        all_samples = []
-        print(f"Running unconditional sampling for {n_samples} samples")
-        for _ in trange(math.ceil(n_samples / batch_size), desc="Sampling Batches (unconditional)"):
-            logs = make_convolutional_sample(model, batch_size, image_size, vanilla, custom_steps, eta, verbose)
-            n_saved = save_logs(logs, imglogdir, pcdlogdir, n_saved=n_saved, key="samples", config=config)
-            all_samples.extend([custom_to_pcd(img, config)[0].astype(np.float32) for img in logs["samples"]])
-            if n_saved >= n_samples:
-                print(f'Finish after generating {n_saved} samples')
-                break
-        joblib.dump(all_samples, os.path.join(nplog, f"samples.pcd"))
-    else:
-       raise NotImplementedError('Currently only sampling for unconditional models supported.')
+    all_samples, all_gt = [], []
+    print(f"Running conditional sampling")
+    for batch in tqdm(dataloader, desc="Sampling Batches (conditional)"):
+        all_gt.extend(batch['reproj'])
+        N = len(batch['reproj'])
+        logs = model.log_images(batch, N=N, split='val', **log_config)
+        n_saved = save_logs(logs, imglogdir, pcdlogdir, N, n_saved=n_saved, config=config)
+        all_samples.extend([custom_to_pcd(img, config)[0].astype(np.float32) for img in logs["samples"]])
+    joblib.dump(all_samples, os.path.join(nplog, f"samples.pcd"))
 
     print(f"Sampling of {n_saved} images finished in {(time.time() - tstart) / 60.:.2f} minutes.")
-    return all_samples
+    return all_samples, all_gt
 
 
-def save_logs(logs, imglogdir, pcdlogdir, n_saved=0, key="samples", np_path=None, config=None):
-    for k in logs:
-        if k == key:
-            batch = logs[key]
-            if np_path is None:
-                for x in batch:
-                    # save as image
-                    img = custom_to_pil(x)
-                    imgpath = os.path.join(imglogdir, f"{key}_{n_saved:06}.png")
-                    img.save(imgpath)
-                    # save as point cloud
+def save_logs(logs, imglogdir, pcdlogdir, num, n_saved=0, key_list=None, config=None):
+    key_list = logs.keys() if key_list is None else key_list
+    for i in range(num):
+        for k in key_list:
+            if k in ['reconstruction']:
+                continue
+            x = logs[k][i]
+            # save as image
+            if x.ndim == 3 and x.shape[0] in [1, 3]:
+                img = custom_to_pil(x)
+                imgpath = os.path.join(imglogdir, f"{k}_{n_saved:06}.png")
+                img.save(imgpath)
+            # save as point cloud
+            if k in ['samples', 'inputs']:
+                if config.model.params.cond_stage_key == 'segmentation':
+                    xyz, rgb = custom_to_pcd(x, config, logs['original_conditioning'][i])
+                else:
                     xyz, rgb = custom_to_pcd(x, config)
-                    pcdpath = os.path.join(pcdlogdir, f"{key}_{n_saved:06}.txt")
-                    np.savetxt(pcdpath, np.hstack([xyz, rgb]), fmt='%.3f')
-                    n_saved += 1
-            else:
-                npbatch = custom_to_np(batch)
-                shape_str = "x".join([str(x) for x in npbatch.shape])
-                nppath = os.path.join(np_path, f"{n_saved}-{shape_str}-samples.npz")
-                np.savez(nppath, npbatch)
-                n_saved += npbatch.shape[0]
+                pcdpath = os.path.join(pcdlogdir, f"{k}_{n_saved:06}.txt")
+                np.savetxt(pcdpath, np.hstack([xyz, rgb]), fmt='%.3f')
+        n_saved += 1
     return n_saved
 
 
@@ -176,14 +121,6 @@ def get_parser():
         nargs="?",
         help="load from logdir or checkpoint in logdir",
         default="none"
-    )
-    parser.add_argument(
-        "-n",
-        "--n_samples",
-        type=int,
-        nargs="?",
-        help="number of samples to draw",
-        default=1000
     )
     parser.add_argument(
         "-e",
@@ -199,11 +136,6 @@ def get_parser():
         action='store_true',
         help="vanilla sampling (default option is DDIM sampling)?",
     )
-    parser.add_argument(
-        '--image_size',
-        nargs='+',
-        type=int,
-        default=None)
     parser.add_argument(
         "-l",
         "--logdir",
@@ -287,7 +219,6 @@ def load_model(config, ckpt):
         pl_sd = {"state_dict": None}
         global_step = None
     model = load_model_from_config(config.model, pl_sd["state_dict"])
-    count_params(model.first_stage_model, verbose=True)
     return model, global_step
 
 
@@ -301,6 +232,19 @@ def visualize(samples, logdir):
 
 
 def test_collate_fn(data):
+    output = {}
+    keys = data[0].keys()
+    for k in keys:
+        v = [d[k] for d in data]
+        if k not in ['reproj', 'raw']:
+            v = torch.from_numpy(np.stack(v, 0))
+        else:
+            v = [d[k] for d in data]
+        output[k] = v
+    return output
+
+
+def traverse_collate_fn(data):
     pcd_list = [example['reproj'].astype(np.float32) for example in data]
     return pcd_list
 
@@ -363,8 +307,6 @@ if __name__ == "__main__":
     print(config)
 
     if opt.file is None:
-        # if opt.eval:
-        #     assert opt.n_samples == 2000, "Specify n_samples=2000 for evaluation"
         model, global_step = load_model(config, ckpt)
         print(f"global step: {global_step}")
         print(75 * "=")
@@ -387,27 +329,38 @@ if __name__ == "__main__":
         with open(sampling_file, 'w') as f:
             yaml.dump(sampling_conf, f, default_flow_style=False)
         print(sampling_conf)
-        all_samples = run(model, imglogdir, pcdlogdir, eta=opt.eta, vanilla=opt.vanilla,
-                          n_samples=opt.n_samples, custom_steps=opt.custom_steps,
-                          batch_size=opt.batch_size, image_size=opt.image_size,
-                          nplog=numpylogdir, config=config, verbose=opt.verbose)
+
+        # traverse all validation data
+        data_config = config['data']['params']['validation']
+        data_config['params'].update({'dataset_config': config['data']['params']['dataset'],
+                                      'aug_config': config['data']['params']['aug'], 'return_pcd': True,
+                                      'max_objects_per_image': 5})
+        dataset = instantiate_from_config(data_config)
+        dataloader = DataLoader(dataset, batch_size=opt.batch_size, num_workers=8, shuffle=False, drop_last=False,
+                                collate_fn=test_collate_fn)
+
+        # settings
+        log_config = {'sample': True, 'ddim_steps': opt.custom_steps,
+                      'quantize_denoised': False, 'inpaint': False, 'plot_progressive_rows': False,
+                      'plot_diffusion_rows': False, 'dset': dataset}
+        # test = dataset[0]
+        all_samples, all_gt = run(model, dataloader, imglogdir, pcdlogdir, nplog=numpylogdir,
+                                  config=config, verbose=opt.verbose, log_config=log_config)
+
         # recycle gpu memory
         del model
         torch.cuda.empty_cache()
     else:
         all_samples = joblib.load(opt.file)
-        if opt.eval:
-            assert len(all_samples) == 2000, "Prepare 2000 samples before evaluation"
         all_samples = [sample.astype(np.float32) for sample in all_samples]
 
-    if opt.image_size is None:
         # traverse all validation data
         data_config = config['data']['params']['validation']
         data_config['params'].update({'dataset_config': config['data']['params']['dataset'],
                                       'aug_config': config['data']['params']['aug'], 'return_pcd': True})
         dataset = instantiate_from_config(data_config)
-        dataloader = DataLoader(dataset, batch_size=8, num_workers=8, shuffle=False, drop_last=False,
-                                collate_fn=test_collate_fn)
+        dataloader = DataLoader(dataset, batch_size=64, num_workers=8, shuffle=False, drop_last=False,
+                                collate_fn=traverse_collate_fn)
         all_gt = []
         for batch in dataloader:
             all_gt.extend(batch)

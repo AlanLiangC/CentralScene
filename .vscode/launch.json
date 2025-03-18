@@ -27,18 +27,25 @@
                 // "--num_workers", "1"
 
                 // train lidar diffusion
-                "-b", "../config/lidar_diffusion/nuscenes/uncond_c2_p4.yaml",
-                "-t",
-                "--gpus", "1",
-                "--batch_size", "2",
-                "--num_workers", "1"
+                // "-b", "../config/lidar_diffusion/kitti/uncond_c2_p4.yaml",
+                // "-t",
+                // "--gpus", "1",
+                // "--batch_size", "2",
+                // "--num_workers", "1"
 
                 // sample
                 // "-d", "kitti",
                 // "-r", "../model/lidm/kitti/uncond/model.ckpt",
-                // "-n", "2000",
+                // "-n", "10",
                 // "-b", "2",
                 // "--eval"
+
+                // sample_cond
+                "-d", "kitti",
+                "-r", "../model/lidm/kitti/sem2lidar/model.ckpt",
+                // "-n", "10",
+                "-b", "2",
+                "--eval"
             ]
         }
     ]
