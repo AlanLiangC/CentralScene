@@ -153,7 +153,7 @@ class VQGeoLPIPSWithDiscriminator(nn.Module):
         if self.norm_factor > 0:
             surf_normal = depth_to_normal(pred_depth[:,0,:,:], self.vfov, self.hfov)
             render_normal = depth_to_normal(gt_depth[:,0,:,:], self.vfov, self.hfov)
-            loss_normal_consistency = (1 - (render_normal * surf_normal).sum(dim=0)[1:-1, 1:-1]).mean() * self.norm_factor
+            loss_normal_consistency = (1 - (render_normal * surf_normal).sum(dim=1)[:, 1:-1, 1:-1]).mean() * self.norm_factor
 
         else:
             loss_normal_consistency = torch.tensor(0.0)
