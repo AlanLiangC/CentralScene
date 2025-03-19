@@ -416,52 +416,6 @@ class Decoder(nn.Module):
             h = torch.tanh(h)
         return h
 
-class RecDecoder(Decoder):
-    def __init__(self, *, ch, out_ch, ch_mult, strides, num_res_blocks, attn_levels,
-                 dropout=0.0, resamp_with_conv=True, in_channels, z_channels, give_pre_end=False,
-                 tanh_out=False, use_linear_attn=False, attn_type="vanilla", use_mask=False,
-                 **ignorekwargs):
-        
-        super().__init__(ch=ch, out_ch=out_ch, ch_mult=ch_mult, strides=strides, num_res_blocks=num_res_blocks, 
-                         attn_levels=attn_levels, dropout=dropout, resamp_with_conv=resamp_with_conv, in_channels=in_channels, 
-                         z_channels=z_channels, give_pre_end=give_pre_end, tanh_out=tanh_out, use_linear_attn=use_linear_attn, 
-                         attn_type=attn_type, use_mask=use_mask, **ignorekwargs)
-
-    def forward(self, z):
-        self.last_z_shape = z.shape
-
-        # timestep embedding
-        temb = None
-
-        # z to block_in
-        h = self.conv_in(z)
-
-        # middle
-        h = self.mid.block_1(h, temb)
-        h = self.mid.attn_1(h)
-        h = self.mid.block_2(h, temb)
-
-        # upsampling
-        for i_level in reversed(range(self.num_resolutions)):
-            for i_block in range(self.num_res_blocks + 1):
-                h = self.up[i_level].block[i_block](h, temb)
-                if len(self.up[i_level].attn) > 0:
-                    h = self.up[i_level].attn[i_block](h)
-            if i_level != 0:
-                h = self.up[i_level].upsample(h)
-
-        # end
-        if self.give_pre_end:
-            return h
-
-        h = self.norm_out(h)
-        h = nonlinearity(h)
-        h = self.conv_out(h)
-        if self.tanh_out:
-            h = torch.tanh(h)
-        return h
-    
-
 class SimpleDecoder(nn.Module):
     def __init__(self, in_channels, out_channels, *args, **kwargs):
         super().__init__()

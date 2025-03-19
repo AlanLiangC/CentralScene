@@ -21,7 +21,7 @@ model:
         geo_factor: 0
         mask_factor: 0  # 0.0
         perceptual_factor: 0
-        chamfer_factor: 0.01
+        chamfer_factor: 0.0
         smooth_factor: 0.001
         norm_factor: 0.1
         vfov: [ -30.0, 10.0 ]
