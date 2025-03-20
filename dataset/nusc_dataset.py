@@ -118,10 +118,10 @@ class nuScenesDatasetSceneGraph(data.Dataset):
         if self.with_CLIP:
             self.cond_model, preprocess = clip.load("ViT-B/32", device='cuda')
             self.cond_model_cpu, preprocess_cpu = clip.load("ViT-B/32", device='cpu')
-            # print('loading CLIP')
-            # print('Checking for missing clip feats. This can be slow the first time.')
-            # for index in tqdm(range(len(self))):
-            #     self.__getitem__(index)
+            print('loading CLIP')
+            print('Checking for missing clip feats. This can be slow the first time.')
+            for index in tqdm(range(len(self))):
+                self.__getitem__(index)
             self.recompute_clip = False
 
     def read_relationship_json(self, rel_box_json_file):
@@ -181,13 +181,13 @@ class nuScenesDatasetSceneGraph(data.Dataset):
         scan_id = self.scans[index]
         # If true, expected paths to saved clip features will be set here
         if self.with_CLIP:
-            self.clip_feats_path = os.path.join(self.root, scan_id,
+            self.clip_feats_path = os.path.join(self.root, 'CLIP', scan_id,
                                                 'CLIP_{}.pkl'.format(scan_id))
             if not self.large:
-                self.clip_feats_path = os.path.join(self.root, scan_id,
+                self.clip_feats_path = os.path.join(self.root, 'CLIP', scan_id,
                                                         'CLIP_small_{}.pkl'.format(scan_id))
-            if not os.path.exists(os.path.join(self.root, scan_id)):
-                os.makedirs(os.path.join(self.root, scan_id))
+            if not os.path.exists(os.path.join(self.root, 'CLIP', scan_id)):
+                os.makedirs(os.path.join(self.root, 'CLIP', scan_id))
             if self.recompute_clip:
                 self.clip_feats_path += 'tmp'
 
