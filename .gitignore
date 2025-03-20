@@ -144,3 +144,8 @@ wandb/
 flagged
 samples
 scripts/pretrained_weights
+scripts/checkpoint
+scripts/echolayout
+scripts/echoscene
+scripts/ALTest
+full_mp

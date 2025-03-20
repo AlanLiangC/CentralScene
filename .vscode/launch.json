@@ -21,10 +21,10 @@
                 // "--num_workers", "1"
 
                 // eval vae
-                "-d", "nuscenes",
-                "-r", "../model/first_stage_models/nusc/f_c2_p4/last.ckpt",
-                "--batch_size", "2",
-                "--num_workers", "1"
+                // "-d", "nuscenes",
+                // "-r", "../model/first_stage_models/nusc/f_c2_p4/last.ckpt",
+                // "--batch_size", "2",
+                // "--num_workers", "1"
 
                 // train lidar diffusion
                 // "-b", "../config/lidar_diffusion/kitti/uncond_c2_p4.yaml",
@@ -45,6 +45,36 @@
                 // "-r", "../model/lidm/kitti/sem2lidar/model.ckpt",
                 // "-b", "2",
                 // "--eval"
+
+                // train echoscene
+                // "--exp", "./echolayout",
+                // "--room_type", "all",
+                // "--dataset", "/home/alan/AlanLiang/Projects/3D_Reconstruction/echoscene/FRONT",
+                // "--residual", "True",
+                // "--network_type", "echolayout",
+                // "--with_SDF", "True",
+                // "--with_CLIP", "True",
+                // "--batchSize", "1",
+                // "--workers", "1",
+                // "--loadmodel", "False",
+                // "--nepoch", "10000",
+                // "--large", "False",
+                // "--use_scene_rels", "True"
+
+                // train lidar scene
+                "--exp", "./logs/echolayout",
+                "--room_type", "nuscenes",
+                "--dataset", "/home/alan/AlanLiang/Projects/AlanLiang/CentralScene/data/nuscenes",
+                "--residual", "True",
+                "--network_type", "echolayout",
+                "--with_SDF", "True",
+                "--with_CLIP", "True",
+                "--batchSize", "2",
+                "--workers", "1",
+                "--loadmodel", "False",
+                "--nepoch", "10000",
+                "--large", "False",
+                "--use_scene_rels", "True"
             ]
         }
     ]

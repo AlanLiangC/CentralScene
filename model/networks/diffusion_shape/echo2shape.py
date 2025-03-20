@@ -166,7 +166,8 @@ class EchoToShape(BaseModel):
         )
         
         logvar_init = 0.
-        self.logvar = torch.full(fill_value=logvar_init, size=(self.num_timesteps,))
+        logvar = torch.full(fill_value=logvar_init, size=(self.num_timesteps,))
+        self.logvar = logvar.to(self.device)
         # for cls-free guidance
         self.uc_scale = uc_scale
 

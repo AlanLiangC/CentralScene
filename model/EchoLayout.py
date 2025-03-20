@@ -28,7 +28,7 @@ class Sg2BoxDiffModel(nn.Module):
         add_dim = 0
         if self.clip:
             add_dim = 512
-        self.obj_classes_grained = list(set(vocab['object_idx_to_name_grained']))
+        # self.obj_classes_grained = list(set(vocab['object_idx_to_name_grained']))
         self.edge_list = list(set(vocab['pred_idx_to_name']))
         self.obj_classes_list = list(set(vocab['object_idx_to_name']))
         self.classes = dict(zip(sorted(self.obj_classes_list),range(len(self.obj_classes_list))))
