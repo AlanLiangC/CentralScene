@@ -91,8 +91,10 @@ class nuScenesDatasetSceneGraph(data.Dataset):
         self.relationships_dict_r = dict(zip(self.relationships_dict.values(), self.relationships_dict.keys()))
 
         if split == 'train_scans':
+            self.training = True
             self.rel_box_json_file = os.path.join(self.root, 'nuscenes_infos_train.pkl')
         else: # test set
+            self.training = False
             self.rel_box_json_file = os.path.join(self.root, 'nuscenes_infos_val.pkl')
 
         self.relationship_json, self.objs_json, self.tight_boxes_json = \
@@ -181,13 +183,14 @@ class nuScenesDatasetSceneGraph(data.Dataset):
         scan_id = self.scans[index]
         # If true, expected paths to saved clip features will be set here
         if self.with_CLIP:
-            self.clip_feats_path = os.path.join(self.root, 'CLIP', scan_id,
+            if_training = 'train' if self.training else 'val'
+            self.clip_feats_path = os.path.join(self.root, if_training, 'CLIP', scan_id,
                                                 'CLIP_{}.pkl'.format(scan_id))
             if not self.large:
-                self.clip_feats_path = os.path.join(self.root, 'CLIP', scan_id,
+                self.clip_feats_path = os.path.join(self.root, if_training, 'CLIP', scan_id,
                                                         'CLIP_small_{}.pkl'.format(scan_id))
-            if not os.path.exists(os.path.join(self.root, 'CLIP', scan_id)):
-                os.makedirs(os.path.join(self.root, 'CLIP', scan_id))
+            if not os.path.exists(os.path.join(self.root, if_training, 'CLIP', scan_id)):
+                os.makedirs(os.path.join(self.root, if_training, 'CLIP', scan_id))
             if self.recompute_clip:
                 self.clip_feats_path += 'tmp'
 
@@ -566,7 +569,7 @@ class nuScenesDatasetSceneGraph(data.Dataset):
 if __name__ == "__main__":
     dataset = nuScenesDatasetSceneGraph(
         root="/home/alan/AlanLiang/Projects/AlanLiang/CentralScene/data/nuscenes",
-        split='train_scans',
+        split='val_scans',
         shuffle_objs=True,
         use_SDF=False,
         use_scene_rels=True,

@@ -29,7 +29,7 @@ model:
         embed_dim: 8
         n_embed: 16384
         lib_name: lidm
-        use_mask: True  # False
+        use_mask: False  # False
         ckpt_path: ../model/first_stage_models/nusc/f_c2_p4/last.ckpt
         ddconfig:
           double_z: false
@@ -85,6 +85,7 @@ data:
         condition_key: image
         # data_root: /home/alan/AlanLiang/Dataset/Nuscenes
         data_root: /data1/liangao/Dataset/openpcd_nuscenes
+
 
 lightning:
   callbacks:

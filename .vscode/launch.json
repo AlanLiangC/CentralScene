@@ -14,7 +14,7 @@
             "cwd": "${workspaceFolder}/scripts",
             "args": [
                 // train vae
-                // "-b", "../config/vae/kitti/autoencoder_c2_p4_gaus_token.yaml",
+                // "-b", "../config/vae/nuscenes/autoencoder_c2_p4_gaus.yaml",
                 // "-t",
                 // "--gpus", "1",
                 // "--batch_size", "2",
@@ -30,7 +30,7 @@
                 "-b", "../config/lidar_diffusion/nuscenes/uncond_c2_p4.yaml",
                 "-t",
                 "--gpus", "1",
-                "--batch_size", "2",
+                "--batch_size", "1",
                 "--num_workers", "1"
 
                 // sample
@@ -75,6 +75,16 @@
                 // "--nepoch", "10000",
                 // "--large", "False",
                 // "--use_scene_rels", "True"
+
+                // eval lidar scene
+                // "--exp", "./logs/echolayout",
+                // "--room_type", "nuscenes",
+                // "--dataset", "/home/alan/AlanLiang/Projects/AlanLiang/CentralScene/data/nuscenes",
+                // "--visualize", "True",
+                // "--epoch", "100",
+                // "--render_type", "onlybox",
+                // "--gen_shape", "False"
+
             ]
         }
     ]
