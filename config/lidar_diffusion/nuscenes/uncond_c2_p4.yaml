@@ -30,12 +30,12 @@ model:
         n_embed: 16384
         lib_name: lidm
         use_mask: True  # False
-        ckpt_path: ../model/first_stage_models/nusc/f_c2_p4/model.ckpt
+        ckpt_path: ../model/first_stage_models/nusc/f_c2_p4/last.ckpt
         ddconfig:
           double_z: false
           z_channels: 8
-          in_channels: 2
-          out_ch: 2
+          in_channels: 1
+          out_ch: 1
           ch: 64
           ch_mult: [1,2,2,4]
           strides: [[1,2],[2,2],[2,2]]
@@ -62,7 +62,7 @@ data:
       y_range: [ -50.0, 50.0 ]
       z_range: [ -3.0, 1.0 ]
       resolution: 1
-      num_channels: 2
+      num_channels: 1
       num_cats: 10
       num_views: 2
       num_sem_cats: 19
