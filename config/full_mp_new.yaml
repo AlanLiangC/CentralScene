@@ -16,7 +16,8 @@ dataset:
     ratio: 1
     lidar_scene:
       box_range: &box_range [-50, -50,-4, 50, 50, 2]
-      raw_path: /home/alan/AlanLiang/Dataset/Nuscenes/v1.0-trainval
+      # raw_path: /home/alan/AlanLiang/Dataset/Nuscenes/v1.0-trainval
+      raw_path: /mnt/scratch/e/e1493786/AlanLiang/Dataset/Nuscenes/v1.0-trainval
       size: &size [32, 1024]
       fov: &fov [ 10,-30 ]
       depth_range: [ 1.0,56.0 ]
