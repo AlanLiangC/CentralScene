@@ -14,7 +14,19 @@ dataset:
     res: 64
     trunc_thres: 0.2
     ratio: 1
-
+    lidar_scene:
+      box_range: &box_range [-50, -50,-4, 50, 50, 2]
+      # raw_path: /home/alan/AlanLiang/Dataset/Nuscenes/v1.0-trainval
+      raw_path: /mnt/scratch/e/e1493786/AlanLiang/Dataset/Nuscenes/v1.0-trainval
+      size: &size [32, 1024]
+      fov: &fov [ 10,-30 ]
+      depth_range: [ 1.0,56.0 ]
+      depth_scale: 5.84  # np.log2(depth_max + 1)
+      log_scale: true
+      x_range: [ -50.0, 50.0 ]
+      y_range: [ -50.0, 50.0 ]
+      z_range: [ -4.0, 2.0 ]
+      
 layout_branch:
     model: diffusion_scene_layout_ddpm
     angle_dim: 2

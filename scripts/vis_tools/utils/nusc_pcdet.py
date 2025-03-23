@@ -1,9 +1,12 @@
 from pathlib import Path
 import pickle
 import numpy as np
+import Ome
 import sys
 sys.path.append('/home/alan/AlanLiang/Projects/AlanLiang/CentralScene')
 from dataset.nusc_dataset import nuScenesDatasetSceneGraph
+
+diff_cfg = OmegaConf.load(args.diff_yaml)
 
 class NUSC_PCDet:
     def __init__(self, data_root):
@@ -27,7 +30,8 @@ class NUSC_PCDet:
             recompute_feats=False,
             recompute_clip=False,
             eval=True,
-            eval_type='none')
+            eval_type='none',
+            lidar_scene=diff_cfg.dataset.lidar_scene)
 
     @property
     def __len__(self):

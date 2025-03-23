@@ -527,8 +527,9 @@ class LiScDiffModel(nn.Module):
         state_dict_1_layout = super(LiScDiffModel, self).state_dict()
         state_dict_basic = {'epoch': epoch, 'counter': counter, 'opt': self.optimizerFULL.state_dict()}
         state_dict_shape = {
-            'vqvae': self.ShapeDiff.vqvae_module.state_dict(),
-            'shape_df': self.ShapeDiff.df_module.state_dict(),
+            'vqvae': self.ShapeDiff.first_stage_model.state_dict(),
+            'cond_stage': self.ShapeDiff.cond_stage_model.state_dict(),
+            'shape_df': self.ShapeDiff.model.state_dict(),
         }
         state_dict_1_layout.update(state_dict_basic)
         state_dict_1_layout.update(state_dict_shape)

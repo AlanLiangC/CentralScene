@@ -133,5 +133,7 @@ class SGDiff(nn.Module):
             torch.save(self.diff.state_dict(epoch, counter), os.path.join(exp, outf, 'model{}.pth'.format(epoch)))
         elif self.type_ == 'echoscene':
             torch.save(self.diff.state_dict(epoch, counter), os.path.join(exp, outf, 'model{}.pth'.format(epoch)))
+        elif self.type_ == 'lidarscene':
+            torch.save(self.diff.state_dict(epoch, counter), os.path.join(exp, outf, 'model{}.pth'.format(epoch)))
         else:
             raise NotImplementedError

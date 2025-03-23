@@ -242,6 +242,8 @@ def train():
 
                 model.diff.optimizerFULL.zero_grad()
 
+                # model.save(args.exp, args.outf, epoch, counter=counter)
+
                 model = model.train()
 
                 obj_selected, shape_loss, layout_loss, loss_dict = model.forward_mani(enc_objs, enc_triples, encoded_enc_text_feat, encoded_enc_rel_feat,
@@ -297,13 +299,13 @@ def train():
                 # t = (time.time() - iter_start_time) / args.batchSize
                 # loss_diff = model.diff.ShapeDiff.get_current_errors()
                 # model.diff.visualizer.print_current_errors(writer, counter, loss_diff, t)
-                if counter % 10000 == 0 and obj_selected is not None:
-                    obj_selected = obj_selected.detach().cpu().numpy()
-                    obj_idx = np.where(dec_objs_to_scene==0)[0]
-                    triplet_idx = np.where(dec_triples_to_scene==0)[0]
-                    model.diff.ShapeDiff.gen_shape_after_foward_2(obj_idx,triplet_idx, num_obj=args.vis_num)
-                    model.diff.visualizer.display_current_results(writer, model.diff.ShapeDiff.get_current_visuals(
-                        dataset.classes_r, obj_selected, num_obj=args.vis_num), counter, phase='train')
+                # if counter % 10000 == 0 and obj_selected is not None:
+                #     obj_selected = obj_selected.detach().cpu().numpy()
+                #     obj_idx = np.where(dec_objs_to_scene==0)[0]
+                #     triplet_idx = np.where(dec_triples_to_scene==0)[0]
+                #     model.diff.ShapeDiff.gen_shape_after_foward_2(obj_idx,triplet_idx, num_obj=args.vis_num)
+                #     model.diff.visualizer.display_current_results(writer, model.diff.ShapeDiff.get_current_visuals(
+                #         dataset.classes_r, obj_selected, num_obj=args.vis_num), counter, phase='train')
 
                 if h.interrupted:
                     break
@@ -311,12 +313,9 @@ def train():
             if h.interrupted:
                 break
 
-            if epoch % 100 == 0:
+            if epoch % 10 == 0:
                 model.save(args.exp, args.outf, epoch, counter=counter)
                 print('saved model_{}'.format(epoch))
-
-        model.save(args.exp, args.outf, epoch, counter=counter)
-        print('saved model_{}'.format(epoch))
 
     writer.close()
     wandb.finish()
