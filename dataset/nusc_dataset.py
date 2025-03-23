@@ -16,6 +16,7 @@ import random
 import pickle
 import h5py
 from tqdm import tqdm
+from lidm.utils.lidar_utils import pcd2range, pcd2coord2d, range2pcd
 
 
 changed_relationships_dict = {
@@ -48,9 +49,15 @@ class nuScenesDatasetSceneGraph(data.Dataset):
     def __init__(self, root, root_3dfront='', split='train', shuffle_objs=False, pass_scan_id=False, use_SDF=False,
                  use_scene_rels=False, data_len=None, with_changes=True, scale_func='diag', eval=False,
                  eval_type='addition', with_CLIP=False, bin_angle=False,
-                 seed=True, large=False, recompute_feats=False, recompute_clip=False, dataset='nuscenes'):
+                 seed=True, large=False, recompute_feats=False, recompute_clip=False, dataset='nuscenes',lidar_scene=None):
         self.dataset = dataset
-        self.box_range = [-50,-50,-4,50,50,2]
+        self.lidar_scene = lidar_scene
+        self.box_range = lidar_scene.box_range
+        if self.lidar_scene.log_scale:
+            self.depth_thresh = (np.log2(1./255. + 1) / self.lidar_scene.depth_scale) * 2. - 1 + 1e-6
+        else:
+            self.depth_thresh = (1./255. / self.lidar_scene.depth_scale) * 2. - 1 + 1e-6
+        
         self.seed = seed
         self.with_CLIP = with_CLIP
         self.cond_model = None
@@ -97,7 +104,7 @@ class nuScenesDatasetSceneGraph(data.Dataset):
             self.training = False
             self.rel_box_json_file = os.path.join(self.root, 'nuscenes_infos_val.pkl')
 
-        self.relationship_json, self.objs_json, self.tight_boxes_json = \
+        self.relationship_json, self.objs_json, self.tight_boxes_json, self.lidar_path_json = \
                 self.read_relationship_json(self.rel_box_json_file)
 
         self.padding = 0.2
@@ -136,6 +143,7 @@ class nuScenesDatasetSceneGraph(data.Dataset):
         rel = {}
         objs = {}
         tight_boxes = {}
+        lidar_path = {}
         with open(rel_box_json_file, 'rb') as f:
             data_infos = pickle.load(f)
         for i in range(len(data_infos)):
@@ -145,7 +153,8 @@ class nuScenesDatasetSceneGraph(data.Dataset):
             rel[frame_id] = info['scene_graph']['keep_box_relationships']
             objs[frame_id] = info['scene_graph']['keep_box_names']
             tight_boxes[frame_id] = info['scene_graph']['keep_box']
-        return rel, objs, tight_boxes
+            lidar_path[frame_id] = os.path.join(self.lidar_scene.raw_path, info['lidar_path'])
+        return rel, objs, tight_boxes, lidar_path
 
     def read_relationships(self, read_file):
         """load list of relationship labels
@@ -179,6 +188,17 @@ class nuScenesDatasetSceneGraph(data.Dataset):
         new_boxes[0,:] = -1
         return new_boxes
 
+    def re_scale_box(self, boxes):
+        if isinstance(boxes, torch.Tensor):
+            boxes = boxes.detach().cpu().numpy()
+        x_min,y_min,z_min,x_max,y_max,z_max = self.box_range
+        boxes[1:,0] = boxes[1:,0] * (x_max - x_min) + x_min
+        boxes[1:,1] = boxes[1:,1] * (y_max - y_min) + y_min
+        boxes[1:,2] = boxes[1:,2] * (z_max - z_min) + z_min
+        boxes[1:,3:6] = np.exp(boxes[1:,3:6])
+        boxes[0,:] = 0
+        return boxes
+
     def __getitem__(self, index):
         scan_id = self.scans[index]
         # If true, expected paths to saved clip features will be set here
@@ -201,6 +221,19 @@ class nuScenesDatasetSceneGraph(data.Dataset):
         words = []
         rel_json = self.relationship_json[scan_id]
         obj_json = ['ego'] + list(self.objs_json[scan_id])
+
+        # objs_count = {}
+        # unique_obj_json = []
+
+        # for obj in obj_json:
+        #     if obj_json.count(obj) > 1:
+        #         count = objs_count.get(obj, 0) + 1
+        #         objs_count[obj] = count
+        #         new_obj = f"{obj}{count}"
+        #         unique_obj_json.append(new_obj)
+        #     else:
+        #         unique_obj_json.append(obj)
+
         for r in rel_json:
             triples.append(r)
             words.append(obj_json[r[0]]+' '+self.relationships[r[1]]+' '+obj_json[r[2]]) # TODO check
@@ -262,8 +295,8 @@ class nuScenesDatasetSceneGraph(data.Dataset):
             if not self.eval:
                 if self.with_changes:
                     output['manipulate']['type'] = ['relationship', 'addition', 'none'][
-                        # 1]
-                        np.random.randint(3)]  # removal is trivial - so only addition and rel change
+                        1]
+                        # np.random.randint(3)]  # removal is trivial - so only addition and rel change
                 else:
                     output['manipulate']['type'] = 'none'
                 output['decoder'] = copy.deepcopy(output['encoder'])
@@ -327,7 +360,45 @@ class nuScenesDatasetSceneGraph(data.Dataset):
 
         output['scan_id'] = scan_id
 
+        # lidar --> range
+        data_path = self.lidar_path_json[scan_id]
+        sweep = self.load_lidar_sweep(data_path)
+        proj_range, _ = pcd2range(sweep[:,:3], 
+                                  self.lidar_scene.size, 
+                                  self.lidar_scene.fov, 
+                                  self.lidar_scene.depth_range,
+                                  remission=sweep[:,-1])
+        
+        proj_range, proj_mask = self.process_scan(proj_range)
+        output['image'], output['mask'] = torch.from_numpy(proj_range), torch.from_numpy(proj_mask)
+
         return output
+
+    def load_lidar_sweep(self, path):
+        scan = np.fromfile(path, dtype=np.float32)
+        scan = scan.reshape((-1, 5))
+        points = scan[:, 0:4]  # get xyz & intensity
+        points[:, 3] = points[:, 3] / 255.0
+        return points
+
+    def process_scan(self, range_img):
+        range_img = np.where(range_img < 0, 0, range_img)
+
+        if self.lidar_scene.log_scale:
+            # log scale
+            range_img = np.log2(range_img + 0.0001 + 1)
+
+        range_img = range_img / self.lidar_scene.depth_scale
+        range_img = range_img * 2. - 1.
+
+        range_img = np.clip(range_img, -1, 1)
+        range_img = np.expand_dims(range_img, axis=0)
+
+        # mask
+        range_mask = np.ones_like(range_img)
+        range_mask[range_img < self.depth_thresh] = -1
+
+        return range_img, range_mask
 
 
     def remove_node_and_relationship(self, graph):
@@ -456,6 +527,8 @@ class nuScenesDatasetSceneGraph(data.Dataset):
         out['manipulated_subs'] = []
         out['manipulated_objs'] = []
         out['manipulated_preds'] = []
+        out['range_image'] = []
+        out['range_mask'] = []
         global_node_id = 0
         global_dec_id = 0
         for i in range(len(batch)):
@@ -477,10 +550,11 @@ class nuScenesDatasetSceneGraph(data.Dataset):
 
             global_node_id += len(batch[i]['encoder']['objs'])
             global_dec_id += len(batch[i]['decoder']['objs'])
+            out['range_image'].append(batch[i]['image'])
+            out['range_mask'].append(batch[i]['mask'])
 
         for key in ['encoder', 'decoder']:
             all_objs, all_boxes, all_triples = [], [], []
-            all_objs_grained = []
             all_obj_to_scene, all_triple_to_scene = [], []
             all_points = []
             all_sdfs = []
@@ -508,7 +582,6 @@ class nuScenesDatasetSceneGraph(data.Dataset):
                             text_rel = clip.tokenize(batch[i][key]['words'][idx]).to('cpu')
                             rel = self.cond_model_cpu.encode_text(text_rel).detach().numpy()
                             batch[i][key]['rel_feats'][idx] = torch.from_numpy(np.squeeze(rel)) # this should be a fake relation from the encoder side
-
 
                     all_rel_feats.append(batch[i][key]['rel_feats'])
 

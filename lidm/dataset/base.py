@@ -31,6 +31,7 @@ class DatasetBase(Dataset):
             self.depth_thresh = (np.log2(1./255. + 1) / self.depth_scale) * 2. - 1 + 1e-6
         else:
             self.depth_thresh = (1./255. / self.depth_scale) * 2. - 1 + 1e-6
+        
         self.return_pcd = return_pcd
 
         if degradation is not None and scale_factors is not None:

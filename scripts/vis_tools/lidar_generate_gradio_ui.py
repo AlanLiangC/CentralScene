@@ -1,5 +1,5 @@
 import gradio as gr
-from vis_utils import load_point_cloud_uncon
+from utils.gradio_ui_utils import load_point_cloud_uncon
 
 with gr.Blocks(title='AL', theme=gr.themes.Monochrome()) as demo:
     # layout definition
@@ -41,11 +41,5 @@ with gr.Blocks(title='AL', theme=gr.themes.Monochrome()) as demo:
         [selected_dataset, selected_model],
         [canvas]
     )
-
-    # layout_generate_button.click(
-    #     load_point_cloud_uncon,
-    #     [],
-    #     [canvas]
-    # )
 
 demo.queue().launch(debug=True)

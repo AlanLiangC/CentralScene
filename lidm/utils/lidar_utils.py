@@ -1,5 +1,5 @@
 import math
-
+import torch
 import numpy as np
 
 
@@ -93,6 +93,41 @@ def pcd2range(pcd, size, fov, depth_range, remission=None, labels=None, **kwargs
 
     return proj_range, proj_feature
 
+def pcd2range_gpu(pcd, size, fov, remission=None, labels=None, **kwargs):
+    # laser parameters
+    fov_up = fov[0] / 180.0 * torch.pi  # field of view up in rad
+    fov_down = fov[1] / 180.0 * torch.pi  # field of view down in rad
+    fov_range = torch.abs(fov_down) + torch.abs(fov_up)  # get field of view total in rad
+
+    # get depth (distance) of all points
+    depth = torch.linalg.norm(pcd, 2, 1)
+
+
+    # get scan components
+    scan_x, scan_y, scan_z = pcd[:, 0], pcd[:, 1], pcd[:, 2]
+
+    # get angles of all points
+    yaw = -torch.arctan2(scan_y, scan_x)
+    pitch = torch.arcsin(scan_z / depth)
+
+    # get projections in image coords
+    proj_x = 0.5 * (yaw / torch.pi + 1.0)  # in [0.0, 1.0]
+    proj_y = 1.0 - (pitch + torch.abs(fov_down)) / fov_range  # in [0.0, 1.0]
+
+    # scale to image size using angular resolution
+    proj_x *= size[1]  # in [0.0, W]
+    proj_y *= size[0]  # in [0.0, H]
+
+    # round and clamp for use as index
+    proj_x = torch.maximum(proj_x.new_zeros([1]), torch.minimum(size[1] - 1, proj_x)).to(torch.int32)  # in [0,W-1]
+    proj_y = torch.maximum(proj_x.new_zeros([1]), torch.minimum(size[0] - 1, proj_y)).to(torch.int32)  # in [0,H-1]
+
+    # project depth
+
+    proj_feature = proj_y.new_zeros([int(size[0]),int(size[1]), remission.shape[-1]], dtype=torch.float32)
+    proj_feature[proj_y, proj_x] = remission
+
+    return proj_feature
 
 def range2pcd(range_img, fov, depth_range, depth_scale, log_scale=True, label=None, color=None, **kwargs):
     # laser parameters
